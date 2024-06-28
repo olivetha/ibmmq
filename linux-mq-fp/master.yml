@@ -1,0 +1,9 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    fixpack_version: "25"
+    fixpack_filename: "9.2.0-IBM-MQ-LinuxX64-FP00{{ fixpack_version }}.tar.gz"
+  roles:
+    - check-limit
+    - mq-fp

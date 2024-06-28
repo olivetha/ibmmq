@@ -1,0 +1,3 @@
+queue: 
+mqueuecmd: crtmqm -lc -lp  -ls  -lf  -u SYSTEM.DEAD.LETTER.QUEUE -q {{ queue }}
+

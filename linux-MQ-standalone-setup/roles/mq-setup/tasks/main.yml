@@ -1,0 +1,113 @@
+---
+- name: Install boto3
+  pip:
+    name:
+      - boto3
+      - botocore
+  tags:
+    - step2
+
+- name: Create Dir /home/mqm
+  file:
+    name: /home/mqm
+    state: directory
+    mode: 0755
+    owner: mqm
+    group: mqm
+  tags: step1
+
+- name: Create queue Dirs in  /home/mqm/
+  become: yes
+  become_user: mqm
+  file:
+    name: /home/mqm/{{ queue }}
+    state: directory
+    mode: 0755
+    owner: mqm
+    group: mqm
+  tags: step1
+
+- name: Create Dir /var/mqm/qmgrs/
+  file:
+    name: /var/mqm/qmgrs
+    state: directory
+    mode: 0755
+    owner: mqm
+  tags: step1
+
+- name: Create Dir /var/mqm/qmgrs/
+  file:
+    name: /var/mqm/qmgrs/{{ queue }}
+    state: directory
+    mode: 0755
+    owner: mqm
+    group: mqm
+  tags: step1
+
+- name: Get Files from S3 Bucket
+  amazon.aws.s3_object:
+    aws_access_key_id: "{{ accesskey }}"
+    aws_secret_access_key: "{{ secretkey }}"
+    aws_session_token: "{{ token }}"
+    aws_region: us-east-1
+    mode: get
+    bucket: "{{ bucket }}"
+    object: /PROD-Backup/{{ queue }}.INSTALL.tar.gz
+    dest: /home/mqm/{{ queue }}.tar.gz
+  tags: step2
+
+- name: Change owner
+  file:
+    owner: mqm
+    group: mqm
+    path: /home/mqm/{{ queue }}.tar.gz
+  tags: step2
+
+- name: Unpack file
+  become: yes
+  become_user: mqm
+  shell:
+    cmd: |
+      /bin/tar -xvf {{ queue }}.tar.gz
+    chdir: /home/mqm/
+  tags: step3
+
+- name: Create MQM
+  become: yes
+  become_user: mqm
+  shell:
+    cmd: |
+      {{ mqueuecmd }}
+  tags: step4
+
+- name: Create MQM
+  become: yes
+  become_user: mqm
+  shell:
+    cmd: |
+      cp -Rp /var/mqm/qmgrs/{{ queue }}/qm.ini /var/mqm/qmgrs/{{ queue }}/qm.ini.bkp
+      cp -Rp /home/mqm/{{ queue }}/qm.ini /var/mqm/qmgrs/{{ queue }}/qm.ini
+      if [ -d /home/mqm/{{ queue }}/@ipcc ] ; then cp -Rp /home/mqm/{{ queue }}/@ipcc /var/mqm/qmgrs/{{ queue }}; fi
+      if [ -d /home/mqm/{{ queue }}/ssl ]; then cp -Rp /home/mqm/{{ queue }}/ssl /var/mqm/qmgrs/{{ queue }}; fi
+
+  tags: step5
+
+- name: Update limits.conf
+  blockinfile:
+    path: /etc/security/limits.conf
+    block: |
+      {{ limit_upd }}
+  tags: step6
+
+- name: Start MQ config
+  become: yes
+  become_user: mqm
+  shell:
+    cmd: |
+      dspmq
+      strmqm  {{ queue }}
+      runmqsc {{ queue }} < /home/mqm/{{ queue }}/{{ queue }}.mqsc > {{ queue }}.output
+      echo "alter qmgr chlauth(disabled)" | runmqsc {{ queue }}
+      echo "alter qmgr connauth('')" | runmqsc {{ queue }}
+      echo "refresh security(*)" | runmqsc {{ queue }}
+  tags: step7

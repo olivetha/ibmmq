@@ -1,0 +1,115 @@
+---
+  - name: Install boto3
+    pip:
+      name: boto3
+    tags:
+      - always
+
+  - name: Create mqm Group
+    group:  
+      name: mqm
+      gid: 20006
+      state: present
+
+  - name: Create mqm Account
+    user:
+      name: mqm
+      uid: 20006
+      group: mqm
+      comment: "Service Account"
+      state: present
+      shell: /bin/bash
+    tags:
+      - always
+
+  - name: Create mquser Group
+    group:
+      name: mquser
+      gid: 20007
+      state: present
+
+  - name: Create mquser Account
+    user:
+      name: mquser
+      uid: 20007
+      group: mqm
+      comment: "Service Account"
+      groups: mquser
+      append: yes
+      state: present
+      shell: /bin/bash
+    tags:
+      - always
+
+  - name: Create Directory for InstallManager
+    file: 
+      path: /mq/Server
+      state: directory
+      mode: 0755
+    tags:
+      - always
+
+  - name: Create Directory for Fixpack
+    file: 
+      path: /mq/Fixpack
+      state: directory
+      mode: 0755
+    tags:
+      - always
+
+  - name: Get Fixpack from S3 Bucket
+    amazon.aws.s3_object:
+      aws_access_key_id: "{{ accesskey }}"
+      aws_secret_access_key: "{{ secretkey }}"
+      aws_session_token: "{{ token }}"
+      aws_region: us-east-1
+      mode: get
+      bucket: "{{ bucket }}"
+      object: /mq-92/{{ fixpack_filename }} 
+      dest: /mq/Fixpack/{{ fixpack_filename }} 
+
+  - name: Untar Install Files and run installation
+    shell: "cd /mq/Server; tar -xvf {{ fixpack_filename }}; cd MQServer; ./mqlicense.sh -accept"
+
+  - name: Install RPMs
+    shell:
+      cmd: |
+        rpm -ivh MQSeriesRuntime-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesGSKit-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesServer-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesJRE-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesSDK-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesMan-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesClient-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesJava-9.2.0-5.x86_64.rpm
+        rpm -ivh MQSeriesSamples-9.2.0-5.x86_64.rpm   
+      chdir: /mq/Server/MQServer
+
+
+  - name: Set Install Path
+    shell:
+      cmd: |
+        ./setmqinst -i -p /opt/mqm
+      chdir: /opt/mqm/bin
+
+  - name: Untar FIXPACK and update
+    shell: "cd /mq/Fixpack; tar xvfz {{ fixpack_filename }} "
+
+  - name: Install Fixpack RPMs
+    shell:
+      cmd: |
+        rpm -ivh MQSeriesRuntime-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesGSKit-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesServer-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesJRE-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesSDK-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesMan-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesClient-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesJava-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+        rpm -ivh MQSeriesSamples-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+      chdir: /mq/Fixpack
+
+  - name: Validate isntallation
+    shell: rpm -qa | grep MQSeries | grep U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}
+
+  

@@ -1,0 +1,11 @@
+---
+  - name: Verifying that a limit is set
+    fail:
+      msg: 'This playbook cannot be run if limit is not set'
+    run_once: true
+    when: ansible_limit is not defined
+
+  - debug:
+      msg: Limit is {{ ansible_limit }}, let's continue
+    run_once: true
+    when: ansible_limit is defined

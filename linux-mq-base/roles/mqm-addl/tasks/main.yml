@@ -1,0 +1,95 @@
+---
+  - name: Create hndev Group
+    group:
+      name: hndev
+      gid: 560
+      state: present
+    tags: hndev
+
+  - name: Create hnmqadm Group
+    group:
+      name: hnmqadm
+      gid: 561
+      state: present
+    tags: hndev
+
+  - name: Create hnmqadm ID
+    user:
+      name: hnmqadm
+      uid: 561
+      comment: "HNMQ Nonstop Bridge Application ID"
+      state: present
+      group: hnmqadm
+      shell: /bin/bash
+
+  - name: Install xinetd
+    yum:
+      name: xinetd
+      state: latest
+
+  - name: Create file mqproc file
+    blockinfile:
+      path: /etc/xinetd.d/mqproc
+      mode: 0644
+      create: true
+      block: |
+        {{ mqprocblock }}
+
+  - name: Replace old per_source line
+    replace:
+      path: /etc/xinetd.conf
+      regexp: '	per_source	= 10'
+      replace: "	per_source	= 100"
+
+  - name: Replace old instances line
+    replace:
+      path: /etc/xinetd.conf
+      regexp: '	instances	= 50'
+      replace: "	instances	= 100"
+
+  - name: enable xinetd
+    shell:
+      cmd: |
+        systemctl enable xinetd
+        systemctl restart xinetd
+
+  - name: Create dir /hertznet/mqsrv/log
+    shell:
+      cmd:
+        mkdir -p /hertznet/mqsrv/log
+        mkdir -p /hertznet/mqcltd/log
+
+# Copy the file MQSRVV2 from sharepoint folder to /hertznet/mqsrv/MQSRVV2
+# Copy the file mqcltdv2.exe from sharepoint folder to /hertznet/mqcltd/mqcltdv2.exe
+  - name: copy file
+    copy:
+      src: files/mqcltdv2.exe
+      dest: /hertznet/mqcltd/mqcltdv2.exe
+      mode: '0755'
+
+  - name: copy file
+    copy:
+      src: files/MQSRVV2
+      dest: /hertznet/mqsrv/MQSRVV2
+      mode: '0755'
+
+  - name: copy limits.conf
+    copy:
+      src: files/limits-mq.conf
+      dest: /etc/security/limits.d/mqm.conf
+      mode: '0644'
+
+  - name: copy 50-mq.conf
+    copy:
+      src: files/50-mq.conf
+      dest: /etc/sysctl.d/50-mq.conf
+      mode: '0644'
+
+  - name: chown dirs /hertznet
+    shell:
+      cmd:
+        chown -R hnmqadm:hndev /hertznet
+  - name: chown dirs /hertznet
+    shell:
+      cmd:
+        chmod -R 775 /hertznet

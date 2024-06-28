@@ -1,0 +1,158 @@
+---
+  - name: Install lvm2
+    package:
+      name: lvm2
+      state: present
+      
+  - name: Find unused disk with the correct size
+    shell: for _DISK in $(lsblk -d | awk '{print $1}' | grep -v NAME); do if [ $(lsblk | grep -c $_DISK) -eq 1 ]; then lsblk -d | grep $_DISK  ;fi; done | grep "{{ size }}" | head -1 | awk '{print $1}'
+    register: devname
+
+  - name: Create VG from disk
+    lvg:
+      vg: "{{ vgname }}"
+      pvs:  /dev/{{ devname.stdout }}
+      
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvmqmconf
+      size: 2G
+
+  - name: create mount point
+    file:
+      path: /mqmconfig
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvmqmconf
+
+  - name: Mount new Filesystem
+    mount:
+      path: /mqmconfig
+      src: /dev/{{ vgname }}/lvmqmconf
+      fstype: xfs
+      state: mounted
+
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvoptmqm
+      size: 10G
+
+  - name: create mount point
+    file:
+      path: /opt/mqm
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvoptmqm
+
+  - name: Mount new Filesystem
+    mount:
+      path: /opt/mqm
+      src: /dev/{{ vgname }}/lvoptmqm
+      fstype: xfs
+      state: mounted
+
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvvarmqm
+      size: 5G
+
+  - name: create mount point
+    file:
+      path: /var/mqm
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvvarmqm
+
+  - name: Mount new Filesystem
+    mount:
+      path: /var/mqm
+      src: /dev/{{ vgname }}/lvvarmqm
+      fstype: xfs
+      state: mounted
+
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvvarmqmerr
+      size: 20G
+
+  - name: create mount point
+    file:
+      path: /var/mqm/errors
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvvarmqmerr
+
+  - name: Mount new Filesystem
+    mount:
+      path: /var/mqm/errors
+      src: /dev/{{ vgname }}/lvvarmqmerr
+      fstype: xfs
+      state: mounted
+
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvvarmqmtrace
+      size: 20G
+
+  - name: create mount point
+    file:
+      path: /var/mqm/trace
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvvarmqmtrace
+
+  - name: Mount new Filesystem
+    mount:
+      path: /var/mqm/trace
+      src: /dev/{{ vgname }}/lvvarmqmtrace
+      fstype: xfs
+      state: mounted
+
+  - name: Create LV on VG
+    lvol:
+      vg: "{{ vgname }}"
+      lv: lvvarmqmlog
+      size: 20G
+
+  - name: create mount point
+    file:
+      path: /var/mqm/log
+      state: directory
+      mode: 0755
+
+  - name: Format Filesystem
+    filesystem:
+      fstype: xfs
+      dev: /dev/{{ vgname }}/lvvarmqmlog
+
+  - name: Mount new Filesystem
+    mount:
+      path: /var/mqm/log
+      src: /dev/{{ vgname }}/lvvarmqmlog
+      fstype: xfs
+      state: mounted

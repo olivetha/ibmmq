@@ -1,0 +1,37 @@
+---
+- name: Install boto3
+  pip:
+    name: boto3
+  tags:
+    - always
+
+- name: Execute Move to Normalize Traffic
+  become: yes
+  become_user: mqm
+  shell: |
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+  when: action == "normalize"
+
+- name: Execute Move to DC side of traffic
+  become: yes
+  become_user: mqm
+  shell: |
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+  when: 
+    - action == "move_to_dc"
+
+- name: Execute Move to RC  side of traffic
+  become: yes
+  become_user: mqm
+  shell: |
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+    echo "ALTER QALIAS(DC{{ queue }}) FORCE TARGET(DC{{ queue }}.{{ target }})"| runmqsc {{ qmgr }}
+  when: action == "move_to_rc"

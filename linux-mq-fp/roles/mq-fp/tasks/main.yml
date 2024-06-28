@@ -1,0 +1,75 @@
+---
+- name: Install boto3
+  pip:
+    name: boto3
+  tags:
+    - always
+
+- name: Transfer the fixpack file to the server
+  shell:
+    cmd: |
+      /usr/local/bin/aws s3 cp {{ s3_link }}{{ fixpack_filename }} /mq/Fixpack/
+
+- name: Untar FIXPACK and update
+  shell: "cd /mq/Fixpack; tar xvfz {{ fixpack_filename }}"
+
+- name: Run dspmq to get QMGR name
+  command: "sudo su - mqm -c 'dspmq'"
+  register: dspmq_output
+
+- name: Extract QMGR name from dspmq output
+  set_fact:
+    qmgr_name: "{{ item.split('(')[1].split(')')[0] }}"
+  with_items: "{{ dspmq_output.stdout_lines }}"
+  when: "'STATUS(Running)' in item"
+
+- name: Stop QMGRs
+  command: "sudo systemctl stop {{ item.split('(')[1].split(')')[0] }}.service"
+  loop: "{{ dspmq_output.stdout_lines }}"
+  when: "'STATUS(Running)' in item"
+
+- name: Wait for 1 minute
+  ansible.builtin.pause:
+    minutes: 1
+
+- name: Confirm that QMGRs have been stopped
+  command: "sudo su - mqm -c 'dspmq'"
+  register: dspmq_stopped
+  changed_when: False
+
+- name: Install each fixpack package individually
+  ansible.builtin.command:
+    cmd: "rpm -ivh /mq/Fixpack/{{ item }}"
+  loop:
+    - MQSeriesRuntime-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesGSKit-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesServer-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesJRE-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesSDK-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesMan-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesClient-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesJava-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesSamples-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+
+
+- name: Validate the installation
+  shell: |
+    rpm -qa | grep MQSeries | grep "U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}"
+    dspmqver
+  register: validation_output
+  changed_when: False
+
+- name: Start QMGRs
+  command: "sudo systemctl start {{ item.split('(')[1].split(')')[0] }}.service"
+  loop: "{{ dspmq_output.stdout_lines }}"
+
+- name: Display QMGRs status
+  ansible.builtin.shell: "sudo su - mqm -c 'dspmq'"
+  register: dspmq_output_after_start
+  changed_when: false
+
+- name: Confirm running QMGRs
+  debug:
+    msg: "QMGR {{ item.split('(')[1].split(')')[0] }} está em execução."
+  loop: "{{ dspmq_output_after_start.stdout_lines }}"
+  when: "'STATUS(Running)' in item"
