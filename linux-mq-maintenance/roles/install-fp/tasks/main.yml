@@ -1,0 +1,22 @@
+---
+- name: Install each fixpack package individually
+  ansible.builtin.command:
+    cmd: "rpm -ivh /mq/Fixpack/{{ item }}"
+  loop:
+    - MQSeriesRuntime-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesGSKit-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesServer-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesJRE-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesSDK-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesMan-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesClient-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesJava-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+    - MQSeriesSamples-U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}.x86_64.rpm
+  when: check_running.rc != 0
+
+- name: Validate the installation
+  shell: |
+    rpm -qa | grep MQSeries | grep "U920{{ fixpack_version }}-9.2.0-{{ fixpack_version }}"
+    dspmqver
+  register: validation_output
+  changed_when: False

@@ -1,0 +1,19 @@
+---
+- name: Start QMGRs
+  command: "sudo systemctl start MQQM.service"
+
+- name: Start Broker
+  command: "sudo systemctl start MQBRK.service"
+  when: broker_check.stdout | int != 0  # Convert stdout to integer
+  ignore_errors: yes
+
+- name: Display QMGRs status
+  ansible.builtin.shell: "sudo su - mqm -c 'dspmq'"
+  register: dspmq_output_after_start
+  changed_when: false
+
+- name: Confirm running QMGRs
+  debug:
+    msg: "QMGR {{ item.split('(')[1].split(')')[0] }} its running."
+  loop: "{{ dspmq_output_after_start.stdout_lines }}"
+  when: "'STATUS(Running)' in item"

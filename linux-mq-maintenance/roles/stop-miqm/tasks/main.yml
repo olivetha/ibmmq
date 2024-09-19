@@ -1,0 +1,36 @@
+---
+- name: Check if Server has Broker
+  shell:
+    cmd: |
+      ps -ef |grep bip |grep -v grep| wc -l
+  register: broker_check
+  ignore_errors: yes
+
+- name: Stop Broker
+  command: "sudo systemctl stop MQBRK.service"
+  when: broker_check.stdout | int != 0  # Convert stdout to integer
+  ignore_errors: yes
+
+- name: Broker Wait
+  ansible.builtin.pause:
+    minutes: 1
+  when: broker_check.stdout | int != 0  # Convert stdout to integer
+  ignore_errors: yes 
+
+- name: Stop QMGRs
+  command: "sudo systemctl stop MQQM.service"
+
+- name: MQ Wait
+  ansible.builtin.pause:
+    minutes: 1
+
+- name: Check if any Queue manager is running
+  command: "sudo su - mqm -c 'dspmq | grep QMNAME | grep Running'"
+  register: check_running
+  ignore_errors: yes
+
+- name: Kill remaining mqm process
+  shell:
+    cmd: |
+      ps -ef | egrep "mqm" | awk '{print $2}' | xargs kill
+  ignore_errors: yes 
