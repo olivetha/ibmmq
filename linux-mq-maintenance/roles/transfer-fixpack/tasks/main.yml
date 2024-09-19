@@ -2,7 +2,7 @@
 - name: Transfer the fixpack file to the server
   shell:
     cmd: |
-      /usr/local/bin/aws s3 cp s3://ha-use1-391873376044-prod-s3-aap-setup-files-01/mq-92/{{ fixpack_filename }} /mq/Fixpack/
+      /usr/local/bin/aws s3 cp {{ s3-url }}{{ fixpack_filename }} /mq/Fixpack/
 
 - name: Untar FIXPACK and update
   shell: "cd /mq/Fixpack; tar xvfz {{ fixpack_filename }}"
